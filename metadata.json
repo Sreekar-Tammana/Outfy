@@ -1,0 +1,7 @@
+{
+  "name": "V-Try: Virtual Fitting Room",
+  "description": "A premium virtual try-on experience that allows users to visualize outfits on themselves using advanced AI.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
