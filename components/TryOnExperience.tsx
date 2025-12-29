@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Upload, Camera, Trash2, Plus, Sparkles, X, ChevronRight, Check, ShoppingBag } from 'lucide-react';
+import { Upload, Camera, Trash2, Plus, Sparkles, X, Check, Share2, Download } from 'lucide-react';
 import { OutfitItem } from '../types';
 import { GeminiService } from '../services/geminiService';
 
@@ -41,19 +41,10 @@ const TryOnExperience: React.FC = () => {
     }
   };
 
-  const updateOutfitDescription = (id: string, desc: string) => {
-    setOutfits(prev => prev.map(o => o.id === id ? { ...o, description: desc } : o));
-  };
-
-  const removeOutfit = (id: string) => {
-    setOutfits(prev => prev.filter(o => o.id !== id));
-    if (selectedOutfitId === id) setSelectedOutfitId(null);
-  };
-
   const handleTryOn = async () => {
     const selectedOutfit = outfits.find(o => o.id === selectedOutfitId);
     if (!userImage || !selectedOutfit) {
-      setError("Please upload your photo and select an outfit.");
+      setError("Add a photo and select an outfit first.");
       return;
     }
 
@@ -64,35 +55,60 @@ const TryOnExperience: React.FC = () => {
       const result = await gemini.generateTryOn(
         userImage,
         selectedOutfit.image,
-        selectedOutfit.description || "Apply this outfit naturally."
+        selectedOutfit.description || "Apply outfit naturally."
       );
       if (result) {
         setResultImage(result);
       } else {
-        setError("Could not generate try-on. Please try again.");
+        setError("Generation failed. Please try again.");
       }
     } catch (err) {
-      setError("An error occurred during the try-on process.");
+      setError("An error occurred during process.");
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const handleShare = async () => {
+    if (!resultImage) return;
+    
+    try {
+      const res = await fetch(resultImage);
+      const blob = await res.blob();
+      const file = new File([blob], 'outfy-result.png', { type: 'image/png' });
+
+      if (navigator.share) {
+        await navigator.share({
+          files: [file],
+          title: 'My Outfy Look',
+          text: 'Check out this outfit I tried on Outfy!',
+        });
+      } else {
+        const link = document.createElement('a');
+        link.href = resultImage;
+        link.download = 'outfy-result.png';
+        link.click();
+      }
+    } catch (err) {
+      console.error("Sharing failed", err);
+    }
+  };
+
   return (
-    <div className="px-6 py-8 space-y-10 animate-fade-in">
-      {/* Step 1: User Identity */}
+    <div className="px-6 py-8 space-y-8 animate-fade-in pb-12">
+      {/* Header Profile Section */}
       <section>
-        <div className="flex justify-between items-end mb-4">
+        <div className="flex justify-between items-end mb-4 px-1">
           <div>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Step 01</span>
-            <h2 className="text-2xl font-semibold tracking-tight">Your Profile</h2>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-1">01 IDENTITY</span>
+            <h2 className="text-3xl font-bold tracking-tight">Your Frame</h2>
           </div>
           {userImage && (
             <button 
               onClick={() => setUserImage(null)}
-              className="text-xs font-medium text-gray-500 underline"
+              className="text-xs font-bold text-black uppercase tracking-widest border-b-2 border-black pb-0.5 active:opacity-50"
             >
-              Reset
+              Change
             </button>
           )}
         </div>
@@ -100,155 +116,152 @@ const TryOnExperience: React.FC = () => {
         {!userImage ? (
           <div 
             onClick={() => fileInputRef.current?.click()}
-            className="aspect-[3/4] rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-gray-100 transition-all"
+            className="aspect-[3/4] rounded-3xl border-2 border-dashed border-gray-200 bg-white flex flex-col items-center justify-center gap-5 cursor-pointer active:scale-[0.98] transition-all shadow-[0_10px_30px_rgba(0,0,0,0.03)]"
           >
-            <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400">
-              <Camera size={28} strokeWidth={1.5} />
+            <div className="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center text-black shadow-inner">
+              <Camera size={32} strokeWidth={1.5} />
             </div>
             <div className="text-center">
-              <p className="font-semibold text-gray-800">Upload your photo</p>
-              <p className="text-sm text-gray-500">Selfie or full-body works best</p>
+              <p className="font-bold text-gray-900 text-lg">Upload Profile</p>
+              <p className="text-sm text-gray-400">Frontal view works best</p>
             </div>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
-              onChange={handleUserImageUpload} 
-            />
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUserImageUpload} />
           </div>
         ) : (
-          <div className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl">
+          <div className="relative aspect-[3/4] rounded-3xl overflow-hidden shadow-2xl ring-1 ring-black/5">
             <img src={userImage} alt="User" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-black/10"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-transparent"></div>
           </div>
         )}
       </section>
 
-      {/* Step 2: Outfit Collection */}
+      {/* Outfit Slider Section */}
       <section>
-        <div className="flex justify-between items-end mb-4">
+        <div className="flex justify-between items-end mb-4 px-1">
           <div>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Step 02</span>
-            <h2 className="text-2xl font-semibold tracking-tight">Select Outfit</h2>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-1">02 WARDROBE</span>
+            <h2 className="text-3xl font-bold tracking-tight">Select Item</h2>
           </div>
         </div>
 
-        <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-4 snap-x">
+        <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-6 snap-x smooth-scroll px-1">
           <button 
             onClick={() => outfitInputRef.current?.click()}
-            className="flex-shrink-0 w-32 aspect-[3/4] rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all"
+            className="flex-shrink-0 w-36 aspect-[3/4] rounded-2xl border-2 border-dashed border-gray-200 bg-white flex flex-col items-center justify-center text-gray-400 active:scale-95 transition-all shadow-sm"
           >
-            <Plus size={32} />
-            <input 
-              type="file" 
-              ref={outfitInputRef} 
-              className="hidden" 
-              accept="image/*" 
-              onChange={handleOutfitUpload} 
-            />
+            <Plus size={40} strokeWidth={1} />
+            <span className="text-[10px] font-bold uppercase mt-2 tracking-widest">New</span>
+            <input type="file" ref={outfitInputRef} className="hidden" accept="image/*" onChange={handleOutfitUpload} />
           </button>
           
           {outfits.map((outfit) => (
             <div 
               key={outfit.id}
               onClick={() => setSelectedOutfitId(outfit.id)}
-              className={`flex-shrink-0 w-32 aspect-[3/4] rounded-xl relative overflow-hidden cursor-pointer transition-all snap-start ${
-                selectedOutfitId === outfit.id ? 'ring-2 ring-black ring-offset-2' : 'ring-1 ring-gray-200'
+              className={`flex-shrink-0 w-36 aspect-[3/4] rounded-2xl relative overflow-hidden cursor-pointer transition-all snap-start ${
+                selectedOutfitId === outfit.id ? 'ring-4 ring-black scale-[1.02] shadow-xl' : 'ring-1 ring-gray-100 opacity-80'
               }`}
             >
               <img src={outfit.image} alt="Outfit" className="w-full h-full object-cover" />
               <button 
-                onClick={(e) => { e.stopPropagation(); removeOutfit(outfit.id); }}
-                className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur rounded-full text-red-500 hover:bg-white"
+                onClick={(e) => { e.stopPropagation(); setOutfits(prev => prev.filter(o => o.id !== outfit.id)); }}
+                className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur rounded-full text-red-500 shadow-sm active:scale-90"
               >
                 <Trash2 size={14} />
               </button>
               {selectedOutfitId === outfit.id && (
-                <div className="absolute bottom-2 right-2 bg-black text-white p-1 rounded-full">
-                  <Check size={12} />
+                <div className="absolute bottom-3 right-3 bg-black text-white p-1.5 rounded-full animate-bounce">
+                  <Check size={14} strokeWidth={3} />
                 </div>
               )}
             </div>
           ))}
         </div>
 
-        {selectedOutfitId && (
-          <div className="mt-6 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 animate-slide-up">
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 block">Instructions</label>
-            <textarea 
-              value={outfits.find(o => o.id === selectedOutfitId)?.description || ''}
-              onChange={(e) => updateOutfitDescription(selectedOutfitId, e.target.value)}
-              placeholder="e.g., 'Try only the shirt', 'Tuck in the pants'"
-              className="w-full p-3 bg-gray-50 rounded-xl text-sm border-none focus:ring-1 focus:ring-black min-h-[80px] resize-none"
-            />
-          </div>
-        )}
+        {/* Action Button moved here, under the slider */}
+        <div className="mt-6 flex flex-col gap-3">
+          {error && <p className="text-red-500 text-[10px] font-black uppercase text-center tracking-widest bg-red-50 py-2 rounded-xl border border-red-100">{error}</p>}
+          <button 
+            onClick={handleTryOn}
+            disabled={isProcessing || !userImage || !selectedOutfitId}
+            className={`w-full py-5 rounded-full flex items-center justify-center gap-3 transition-all font-black tracking-[0.3em] uppercase text-xs shadow-xl active:scale-95 ${
+              isProcessing || !userImage || !selectedOutfitId
+                ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                : 'bg-black text-white'
+            }`}
+          >
+            {isProcessing ? (
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                <span>Crafting Look...</span>
+              </div>
+            ) : (
+              <>
+                <Sparkles size={18} fill="white" />
+                Generate Result
+              </>
+            )}
+          </button>
+        </div>
       </section>
 
-      {/* Action CTA */}
-      <div className="pt-4">
-        {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
-        <button 
-          onClick={handleTryOn}
-          disabled={isProcessing || !userImage || !selectedOutfitId}
-          className={`w-full py-5 rounded-full flex items-center justify-center gap-3 transition-all font-bold tracking-widest uppercase text-sm ${
-            isProcessing || !userImage || !selectedOutfitId
-              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              : 'bg-black text-white shadow-xl hover:scale-[1.02] active:scale-[0.98]'
-          }`}
-        >
-          {isProcessing ? (
-            <>
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              Processing...
-            </>
-          ) : (
-            <>
-              <Sparkles size={20} />
-              Magic Try-On
-            </>
-          )}
-        </button>
-      </div>
+      {/* Instruction Input */}
+      {selectedOutfitId && (
+        <div className="bg-white rounded-3xl p-5 shadow-[0_15px_40px_rgba(0,0,0,0.05)] border border-gray-50 animate-slide-up">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles size={14} className="text-black" />
+            <label className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Refine Appearance</label>
+          </div>
+          <textarea 
+            value={outfits.find(o => o.id === selectedOutfitId)?.description || ''}
+            onChange={(e) => setOutfits(prev => prev.map(o => o.id === selectedOutfitId ? { ...o, description: e.target.value } : o))}
+            placeholder="e.g., 'Tucked in', 'Add sunglasses'..."
+            className="w-full p-4 bg-gray-50 rounded-2xl text-sm font-medium border-none focus:ring-1 focus:ring-black min-h-[90px] resize-none placeholder:text-gray-400"
+          />
+        </div>
+      )}
 
       {/* Result Modal */}
       {resultImage && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 animate-fade-in">
           <div className="relative w-full max-w-sm">
-            {/* Convenienly placed Close Button on front of image */}
             <button 
               onClick={() => setResultImage(null)}
-              className="absolute -top-4 -right-4 z-[110] bg-white text-black p-3 hover:bg-gray-100 rounded-full shadow-xl transition-transform active:scale-90"
+              className="absolute -top-6 -right-2 z-[120] bg-white text-black p-4 rounded-full shadow-2xl active:scale-75 transition-transform"
             >
-              <X size={24} />
+              <X size={28} strokeWidth={2.5} />
             </button>
             
-            <div className="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl relative bg-gray-900 ring-1 ring-white/20">
+            <div className="aspect-[3/4] rounded-[2.5rem] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.5)] relative bg-gray-900 ring-2 ring-white/10">
               <img src={resultImage} alt="Try-On Result" className="w-full h-full object-contain" />
-            </div>
-
-            <div className="mt-8 flex gap-4 w-full">
-              <button 
-                className="flex-1 py-4 rounded-full bg-white text-black font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg"
-                onClick={() => {
-                  const link = document.createElement('a');
-                  link.href = resultImage;
-                  link.download = 'vtry-outfit.png';
-                  link.click();
-                }}
-              >
-                Download
-              </button>
-              <button className="p-4 rounded-full bg-white/10 text-white backdrop-blur border border-white/20 hover:bg-white/20 transition-colors">
-                <ShoppingBag size={20} />
-              </button>
+              <div className="absolute bottom-6 left-6 right-6 flex gap-3">
+                 <button 
+                  onClick={handleShare}
+                  className="flex-1 bg-white/20 backdrop-blur-md border border-white/30 text-white py-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-widest active:scale-95 transition-all"
+                 >
+                   <Share2 size={16} /> Share
+                 </button>
+                 <button 
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = resultImage;
+                    link.download = 'outfy-result.png';
+                    link.click();
+                  }}
+                  className="w-16 bg-white text-black rounded-2xl flex items-center justify-center active:scale-95"
+                 >
+                   <Download size={20} />
+                 </button>
+              </div>
             </div>
           </div>
           
-          <p className="mt-8 text-gray-400 text-sm italic text-center max-w-[200px]">
-            AI generated for your style visualization.
-          </p>
+          <div className="mt-12 text-center animate-slide-up">
+            <p className="text-white font-bold tracking-[0.2em] uppercase text-[10px] mb-2">Style Visualization</p>
+            <p className="text-gray-400 text-xs px-12 leading-relaxed font-medium italic">
+              "Your style, reimagined with precision."
+            </p>
+          </div>
         </div>
       )}
     </div>

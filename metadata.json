@@ -1,6 +1,6 @@
 {
-  "name": "V-Try: Virtual Fitting Room",
-  "description": "A premium virtual try-on experience that allows users to visualize outfits on themselves using advanced AI.",
+  "name": "Outfy: Virtual Fitting Room",
+  "description": "Visualize trending outfits from H&M, Zudio, and more on yourself using advanced AI.",
   "requestFramePermissions": [
     "camera"
   ]
